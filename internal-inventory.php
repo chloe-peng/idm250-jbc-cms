@@ -1,18 +1,12 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require 'db_connect.php';
 require './lib/auth.php';
+require './lib/inventory.php';
 
-require_login();
-
-// Prepare query
-$stmt = $connection->prepare("
-    SELECT order_number, unit_number, ficha, description, quantity_shipped, footage_quantity, ship_date
-    FROM inventory
-");
-
-$stmt->execute();
-$result = $stmt->get_result();
-$result_count = $result->num_rows;
+$internal_inventory = get_inventory('internal'); 
 ?>
 
 <!DOCTYPE html>
@@ -25,23 +19,20 @@ $result_count = $result->num_rows;
     <link rel="stylesheet" href="./css/sku.css">
     <link rel="stylesheet" href="./css/normalize.css">
 </head>
-
 <body>
+    <!-- header -->
+    <div class="header-bar">
+        <h2>JBC Manufacturing CMS</h2>
 
-<!-- header -->
-<div class="header-bar">
-    <h2>JBC Manufacturing CMS</h2>
-
-    <div class="header-bar-right">
-        <h5><?php echo htmlspecialchars($_SESSION['user_email']); ?></h5>
-        <a href="logout.php" style="text-decoration: none; color: inherit;"><h5>Logout</h5></a>
+        <div class="header-bar-right">
+            <h5><?php echo htmlspecialchars($_SESSION['user_email']); ?></h5>
+            <a href="logout.php" style="text-decoration: none; color: inherit;"><h5>Logout</h5></a>
+        </div>
     </div>
-</div>
 
-<!-- Page Wrapper -->
-<div class="page-wrapper">
-
-    <!-- Sidebar -->
+    <!-- page wrapper: sidebar + main content -->
+    <div class="page-wrapper">
+        <!-- sidebar -->
         <div class="sidebar-nav">
             <ul class="nav-list">
                 <li class="nav-item">
@@ -62,13 +53,14 @@ $result_count = $result->num_rows;
             </ul>
         </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1 class="color-text-primary">Internal Inventory</h1>
+        <!-- main content -->
+        <div class="main-content">
+            <h1 class="color-text-primary">Internal Inventory</h1>
 
         <div class="internal-inventory-action-card">
             <h3 class="color-text-primary">
-                Total # of Internal Inventory: <?php echo $result_count; ?>
+                Total # of Internal Inventory:
+                <?php echo $internal_inventory['total']; ?>
             </h3>
         </div>
 
@@ -85,27 +77,18 @@ $result_count = $result->num_rows;
                         <th>Ship Date</th>
                     </tr>
                 </thead>
-
                 <tbody>
-                    <?php if ($result_count > 0): ?>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($row['order_number']); ?></td>
-                                <td><?php echo htmlspecialchars($row['unit_number']); ?></td>
-                                <td><?php echo htmlspecialchars($row['ficha']); ?></td>
-                                <td><?php echo htmlspecialchars($row['description']); ?></td>
-                                <td><?php echo htmlspecialchars($row['quantity_shipped']); ?></td>
-                                <td><?php echo htmlspecialchars($row['footage_quantity']); ?></td>
-                                <td><?php echo htmlspecialchars($row['ship_date']); ?></td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
+                    <?php foreach ($internal_inventory['inventory'] as $unit): ?>
                         <tr>
-                            <td colspan="7" style="text-align:center;">
-                                No inventory records found.
-                            </td>
+                            <td><?php echo htmlspecialchars($unit['order_number']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['unit_number']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['ficha']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['description']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['quantity_shipped']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['footage_quantity']); ?></td>
+                            <td><?php echo htmlspecialchars($unit['ship_date']); ?></td>
                         </tr>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -113,8 +96,3 @@ $result_count = $result->num_rows;
 </div>
 </body>
 </html>
-
-<?php
-$stmt->close();
-$connection->close();
-?>

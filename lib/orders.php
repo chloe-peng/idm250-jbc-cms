@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../lib/api.php';
+
 // get all orders
 function get_all_orders() {
     global $connection;
@@ -88,7 +90,7 @@ function get_order_count() {
 }
 
 // creates the header and inserts items
-function create_order($data, $unit_ids) {
+function create_order($data, $unit_numbers) {
     global $connection;
 
     $stmt = $connection->prepare(
@@ -111,11 +113,11 @@ function create_order($data, $unit_ids) {
     
     $order_id = $connection->insert_id;
     
-    if (!empty($unit_ids)) {
+    if (!empty($unit_numbers)) {
         $stmt = $connection->prepare("INSERT INTO order_items (order_id, unit_number) VALUES (?, ?)");
         
-        foreach ($unit_ids as $unit_id) {
-            $stmt->bind_param('ii', $order_id, $unit_id);
+        foreach ($unit_numbers as $unit_number) {
+            $stmt->bind_param('is', $order_id, $unit_number);
             $stmt->execute();
         }
     }
@@ -261,11 +263,12 @@ function send_order_to_wms($order_id) {
     ];
 
     $wms_api_url = 'https://digmstudents.westphal.drexel.edu/~ks4264/idm250-cms-project/api/orders.php';
-    $api_key     = $env['X-API-KEY'];
+    $api_key     = $env['WMS-X-API-KEY'];
 
     $response = api_request($wms_api_url, 'POST', $payload, $api_key);
 
     if (!empty($response['success'])) {
+        error_log("Updating order $order_id status to sent");  // temporary
         update_order_status($order_id, 'sent');
         return [
             'success'     => true,

@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once '../db_connect.php';
 require_once '../lib/auth.php';
-require_once '../lib/order.php'; 
+require_once '../lib/orders.php'; 
 
 ob_end_clean();
 
@@ -24,6 +24,7 @@ check_api_key($env);
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'POST') {
+    global $connection;
     $raw_input = file_get_contents('php://input');
     $data = json_decode($raw_input, true);
 
@@ -42,6 +43,12 @@ if ($method === 'POST') {
         exit;
     }
 
+    if ($action !== 'ship') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Bad Request', 'details' => "Unknown action: $action"]);
+        exit;
+    }
+
     if ($order['status'] === 'confirmed') {
         http_response_code(200);
         echo json_encode([
@@ -53,7 +60,7 @@ if ($method === 'POST') {
 
     $order_id = $order['id'];
 
-    $unit_ids = array_column(get_order_items($order_id), 'unit_id');  // ← fixed
+    $unit_ids = array_column(get_order_items($order_id), 'unit_number');  // ← fixed
     if (empty($unit_ids)) {
         http_response_code(422);
         echo json_encode([

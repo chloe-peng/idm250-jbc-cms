@@ -11,9 +11,12 @@ function check_api_key(array $env) {
     foreach ($headers as $name => $value) {
         if (strtolower($name) === 'x-api-key') {
             $provided_key = $value;
-            // break;
+            break;
         }
     }
+
+    error_log("Expected key: " . $valid_key);
+    error_log("Provided key: " . $provided_key);
 
     if ($provided_key !== $valid_key) {
         http_response_code(401);

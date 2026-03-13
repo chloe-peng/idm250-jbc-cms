@@ -1,6 +1,9 @@
 <?php 
 ob_start();
 
+error_reporting(E_ALL);
+ini_set('log_errors', 1);
+
 define('API_REQUEST', true);
 
 header('Content-Type: application/json');
@@ -18,14 +21,18 @@ require_once '../lib/auth.php';
 require_once '../lib/mpl.php'; 
 
 ob_end_clean();
+// error_log("CMS API: past ob_end_clean");
 
 check_api_key($env);
+// error_log("CMS API: past check_api_key");
+
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'POST') {
-    $input    = file_get_contents('php://input');
-    $data     = json_decode($input, true);  
+    $input = file_get_contents('php://input');
+    // error_log("CMS mpls.php received: " . $input);
+    $data = json_decode($input, true);
 
     $action = $data['action']           ?? null;
     $ref    = $data['reference_number'] ?? null; 

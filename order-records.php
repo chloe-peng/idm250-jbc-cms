@@ -102,7 +102,7 @@ if (isset($_GET['send']) && isset($_GET['id'])) {
                 <?php if ($orders && count($orders) > 0):
                     foreach ($orders as $order):
                     $full_address = "{$order['ship_to_street']}, {$order['ship_to_city']}, {$order['ship_to_state']} {$order['ship_to_zip']}";
-                    $item_count = get_order_item_count($connection, $order['id']);
+                    $item_count = get_order_item_count($order['id']);
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($order['order_number']) ?></td>

@@ -1,6 +1,5 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors',1);
+require_once __DIR__ . '/../lib/api.php';
 
 // get all MPLS
 function get_all_mpls() {
@@ -194,43 +193,18 @@ function update_mpl_status($mpl_id, $status) {
     return $stmt->execute();
 }
 
-function api_request($url, $method, $data, $api_key) {
-    $options = [
-        'http' => [
-            'method'  => $method,
-            'header'  => "Content-Type: application/json\r\n" .
-                         "x-api-key: " . $api_key . "\r\n",
-            'content' => json_encode($data),
-            'ignore_errors' => true
-        ]
-    ];
-
-    $context  = stream_context_create($options);
-    $response = @file_get_contents($url, false, $context);
-    error_log("HTTP response code: " . print_r($http_response_header, true));
-error_log("RAW response: " . $response);
-    $result   = json_decode($response, true);
-
-    if (is_array($result)) {
-        $result['_raw'] = $response;
-    }
-
-    return $result;
-}
-
 function send_mpl_to_wms($mpl_id) {
     global $connection;
     global $env;
 
     $mpl = get_mpl($mpl_id);
 
-    if (in_array($mpl['status'], ['sent', 'confirmed'])) {
-        return ['success' => false, 'error' => "MPL is already '{$mpl['status']}' — cannot resend"];
-    }
     if (!$mpl) {
         return ['success' => false, 'error' => 'MPL not found'];
     }
-
+    if (in_array($mpl['status'], ['sent', 'confirmed'])) {
+        return ['success' => false, 'error' => "MPL is already '{$mpl['status']}' — cannot resend"];
+    }
     $raw_items = get_mpl_items($mpl_id);
     if (empty($raw_items)) {
         return ['error' => 'No units found for this MPL'];
@@ -287,7 +261,7 @@ function update_units_location($mpl_id, $new_location) {
 
     $stmt = $connection->prepare("
         UPDATE inventory i
-        JOIN mpl_items mi ON mi.unit_id = i.unit_number
+        JOIN mpl_items mi ON mi.unit_number = i.unit_number
         SET i.location = ?
         WHERE mi.mpl_id = ?
     ");
