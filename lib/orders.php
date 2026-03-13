@@ -224,12 +224,12 @@ function send_order_to_wms($order_id) {
         return ['success' => false, 'error' => 'Order not found'];
     }
 
-    // Prevent resending an order already sent or fulfilled
+    // prevents resending an order already sent or fulfilled
     if (in_array($order['status'], ['sent', 'confirmed', 'fulfilled'])) {
         return ['success' => false, 'error' => "Order is already '{$order['status']}' — cannot resend"];
     }
 
-    // All shipping address fields are required for WMS to fulfill the order
+    // all fields are required for WMS to fulfill the order
     $required_fields = ['order_number', 'ship_to_company', 'ship_to_street', 'ship_to_city', 'ship_to_state', 'ship_to_zip'];
     foreach ($required_fields as $field) {
         if (empty($order[$field])) {
@@ -247,7 +247,7 @@ function send_order_to_wms($order_id) {
         if (empty($item['unit_number'])) {
             return ['success' => false, 'error' => "One or more items is missing a unit_number"];
         }
-        $formatted_items[] = ['unit_id' => $item['unit_number']];
+        $formatted_items[] = ['unit_number' => (string)$item['unit_number']];
     }
 
     $payload = [
@@ -255,12 +255,12 @@ function send_order_to_wms($order_id) {
         'ship_to_company' => $order['ship_to_company'],
         'ship_to_street'  => $order['ship_to_street'],
         'ship_to_city'    => $order['ship_to_city'],
-        'ship_to_state'   => strtoupper($order['ship_to_state']),  // normalize casing
+        'ship_to_state'   => strtoupper($order['ship_to_state']),
         'ship_to_zip'     => $order['ship_to_zip'],
         'items'           => $formatted_items
     ];
 
-    $wms_api_url = 'http';
+    $wms_api_url = 'https://digmstudents.westphal.drexel.edu/~ks4264/idm250-cms-project/api/orders.php';
     $api_key     = $env['X-API-KEY'];
 
     $response = api_request($wms_api_url, 'POST', $payload, $api_key);

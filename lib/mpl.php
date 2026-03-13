@@ -223,8 +223,12 @@ function send_mpl_to_wms($mpl_id) {
     global $env;
 
     $mpl = get_mpl($mpl_id);
+
+    if (in_array($mpl['status'], ['sent', 'confirmed'])) {
+        return ['success' => false, 'error' => "MPL is already '{$mpl['status']}' — cannot resend"];
+    }
     if (!$mpl) {
-        return ['error' => 'MPL not found'];
+        return ['success' => false, 'error' => 'MPL not found'];
     }
 
     $raw_items = get_mpl_items($mpl_id);
@@ -260,9 +264,7 @@ function send_mpl_to_wms($mpl_id) {
 
     $wms_api_url = 'https://digmstudents.westphal.drexel.edu/~ks4264/idm250-cms-project/api/mpls.php';
     $api_key = $env['WMS-X-API-KEY'];
-//     error_log("WMS Payload: " . json_encode($payload, JSON_PRETTY_PRINT));
-// var_dump($payload);
-// die();
+
     $response = api_request($wms_api_url, 'POST', $payload, $api_key);
 
     if (!empty($response['success'])) {

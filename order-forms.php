@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $inventory_query = "SELECT i.unit_number, i.ficha, s.sku, s.description
                     FROM inventory i
                     LEFT JOIN cms_products s ON i.ficha = s.ficha
-                    WHERE i.location='internal'
+                    WHERE i.location='warehouse'
                     ORDER BY i.unit_number DESC";
 $inventory_result = $connection->query($inventory_query);
 $available_units = $inventory_result->fetch_all(MYSQLI_ASSOC);

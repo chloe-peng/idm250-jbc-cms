@@ -1,20 +1,29 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require 'db_connect.php';
 require './lib/auth.php';
 require './lib/orders.php';
 
 require_login();
 
-// Fetch orders
-$orders = $connection->query("SELECT * FROM orders ORDER BY order_number DESC")->fetch_all(MYSQLI_ASSOC);
+$orders = get_all_orders();
+$order_count = get_order_count();
 
-// Helper: count items
-function get_order_item_count($connection, $order_id) {
-    $stmt = $connection->prepare("SELECT COUNT(*) as count FROM order_items WHERE order_id=?");
-    $stmt->bind_param('i', $order_id);
-    $stmt->execute();
-    $res = $stmt->get_result()->fetch_assoc();
-    return $res['count'] ?? 0;
+if (isset($_GET['send']) && isset($_GET['id'])) {
+    $order_id = (int)$_GET['id'];
+    $response = send_order_to_wms($order_id);
+
+    if (!empty($response['success'])) {
+        $_SESSION['success'] = "Order $order_id sent to WMS successfully!";
+    } else {
+        $_SESSION['error'] = "Failed to send Order $order_id: " . ($response['error'] ?? 'Unknown error') 
+                   . " — " . ($response['details'] ?? '');
+    }
+
+    header('Location: order-records.php');
+    exit;
 }
 ?>
 
@@ -78,9 +87,7 @@ function get_order_item_count($connection, $order_id) {
             <div class="alert error"><?= $_SESSION['error']; ?></div>
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
-        <?php if (empty($orders)): ?>
-            <p>No orders found.</p>
-        <?php else: ?>
+
         <table class="units-table">
             <thead>
                 <tr>
@@ -91,8 +98,9 @@ function get_order_item_count($connection, $order_id) {
                     <th>Actions</th>
                 </tr>
             </thead>
-            <body>
-                <?php foreach ($orders as $order):
+            <tbody>
+                <?php if ($orders && count($orders) > 0):
+                    foreach ($orders as $order):
                     $full_address = "{$order['ship_to_street']}, {$order['ship_to_city']}, {$order['ship_to_state']} {$order['ship_to_zip']}";
                     $item_count = get_order_item_count($connection, $order['id']);
                 ?>
@@ -103,16 +111,23 @@ function get_order_item_count($connection, $order_id) {
                     <td><?= $item_count ?></td>
                     <td>
                         <?php if ($order['status'] === 'draft'): ?>
-                            <a href="order-forms.php?id=<?= $order['id'] ?>" class="btn btn-primary">Edit</a>
-                            <a href="delete-order.php?id=<?= $order['id'] ?>" class="btn btn-cancel" onclick="return confirm('Delete this order?');">Delete</a>
+                            <a href="order-forms.php?id=<?= $order['id'] ?>">Edit</a>
+                            <a href="view-order.php?id=<?= $order['id'] ?>">View</a>
+                            <a href="delete-order.php?id=<?= $order['id'] ?>" onclick="return confirm('Delete this order?');">Delete</a>
+                            <a href="order-records.php?id=<?= $order['id'] ?>&send=1" class="btn-send">Send to WMS</a>
+                        <?php elseif ($order['status'] === 'sent'): ?>
+                            <a href="view-order.php?id=<?= $order['id'] ?>">View</a>
+                        <?php else: ?>
+                            <a href="view-order.php?id=<?= $order['id'] ?>">View</a>
                         <?php endif; ?>
-                        <a href="view-order.php?id=<?= $order['id'] ?>" class="btn btn-primary">View</a>
                     </td>
                 </tr>
-                <?php endforeach; ?>
-            </body>
-        </table>
+                <?php endforeach;
+                else: ?>
+            <tr><td colspan="5" style="text-align: center;">No orders found.</td></tr>
         <?php endif; ?>
+    </tbody>
+</table>
     </div>
 </div>
 </body>
