@@ -47,10 +47,10 @@ function get_order_items($order_id) {
     global $connection;
 
     $stmt = $connection->prepare(
-        "SELECT oi.*, i.ficha, s.*
+        "SELECT oi.*, i.ficha, s.sku, s.description
         FROM order_items oi
-        JOIN inventory i ON oi.unit_id = i.unit_number
-        -- LEFT JOIN cms_products s ON i.ficha = s.ficha
+        JOIN inventory i ON oi.unit_number = i.unit_number
+        LEFT JOIN cms_products s ON i.ficha = s.ficha
         WHERE oi.order_id = ?"
     );
     $stmt->bind_param('i', $order_id);
@@ -112,7 +112,7 @@ function create_order($data, $unit_ids) {
     $order_id = $connection->insert_id;
     
     if (!empty($unit_ids)) {
-        $stmt = $connection->prepare("INSERT INTO order_items (order_id, unit_id) VALUES (?, ?)");
+        $stmt = $connection->prepare("INSERT INTO order_items (order_id, unit_number) VALUES (?, ?)");
         
         foreach ($unit_ids as $unit_id) {
             $stmt->bind_param('ii', $order_id, $unit_id);
@@ -161,7 +161,7 @@ function update_order($id, $data, $unit_ids) {
     $stmt->execute();
     
     if (!empty($unit_ids)) {
-        $stmt = $connection->prepare("INSERT INTO order_items (order_id, unit_id) VALUES (?, ?)");
+        $stmt = $connection->prepare("INSERT INTO order_items (order_id, unit_number) VALUES (?, ?)");
         
         foreach ($unit_ids as $unit_id) {
             $stmt->bind_param('ii', $id, $unit_id);
@@ -237,32 +237,17 @@ function send_order_to_wms($order_id) {
         }
     }
 
-    // Basic format checks
-    if (!preg_match('/^\d{5}(-\d{4})?$/', $order['ship_to_zip'])) {
-        return ['success' => false, 'error' => "Invalid ZIP code: {$order['ship_to_zip']}"];
-    }
-    if (!preg_match('/^[A-Z]{2}$/', strtoupper($order['ship_to_state']))) {
-        return ['success' => false, 'error' => "Invalid state code: {$order['ship_to_state']}"];
-    }
-
     $raw_items = get_order_items($order_id);
     if (empty($raw_items)) {
         return ['success' => false, 'error' => 'No units found for this order'];
     }
 
-    // Make sure every item actually has a unit_id before building the payload
     $formatted_items = [];
     foreach ($raw_items as $item) {
-        if (empty($item['unit_id'])) {
-            return ['success' => false, 'error' => "One or more items is missing a unit_id"];
+        if (empty($item['unit_number'])) {
+            return ['success' => false, 'error' => "One or more items is missing a unit_number"];
         }
-        $formatted_items[] = ['unit_id' => $item['unit_id']];
-    }
-
-    // Sanity cap — if an order has an unusual number of units, 
-    // better to catch it than silently send a bad payload
-    if (count($formatted_items) > 500) {
-        return ['success' => false, 'error' => 'Order exceeds maximum unit limit (500) — review before sending'];
+        $formatted_items[] = ['unit_id' => $item['unit_number']];
     }
 
     $payload = [
@@ -275,13 +260,8 @@ function send_order_to_wms($order_id) {
         'items'           => $formatted_items
     ];
 
-    $wms_api_url = $env['WMS_ORDERS_URL'];
+    $wms_api_url = 'http';
     $api_key     = $env['X-API-KEY'];
-
-    // Make sure the env config is actually set before attempting the call
-    if (empty($wms_api_url) || empty($api_key)) {
-        return ['success' => false, 'error' => 'WMS API URL or API key is not configured'];
-    }
 
     $response = api_request($wms_api_url, 'POST', $payload, $api_key);
 
